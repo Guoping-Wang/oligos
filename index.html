@@ -3,126 +3,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Primer QC Tool</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            padding: 20px;
-            max-width: 600px;
-            margin: auto;
-            background-color: #f4f4f4;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        }
-        h1 {
-            text-align: center;
-            color: #333;
-        }
-        form {
-            margin-bottom: 20px;
-        }
-        label {
-            font-weight: bold;
-        }
-        input[type="text"] {
-            width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-        button {
-            display: block;
-            width: 100%;
-            padding: 10px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        .results {
-            margin-top: 20px;
-            padding: 15px;
-            background: #fff;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        .results p {
-            margin: 5px 0;
-            font-size: 16px;
-        }
-    </style>
+    <title>Primer QC and BLAST</title>
 </head>
 <body>
-    <h1>Primer QC Tool</h1>
-    <form id="primerForm">
-        <label for="primer1">Enter Primer 1 Sequence:</label>
-        <input type="text" id="primer1" name="primer1" placeholder="e.g., ATGCAGCTTAGC" required>
-        
-        <label for="primer2">Enter Primer 2 Sequence:</label>
-        <input type="text" id="primer2" name="primer2" placeholder="e.g., GCTAAGCTGCAT" required>
+    <h1>Primer QC and BLAST Tool</h1>
 
-        <button type="button" onclick="analyzePrimers()">Analyze Primers</button>
+    <!-- Primer QC Form -->
+    <h2>Primer QC</h2>
+    <form id="primerQCForm">
+        <label for="primer1">Primer 1:</label><br>
+        <input type="text" id="primer1" placeholder="Enter Primer 1"><br>
+        <label for="primer2">Primer 2:</label><br>
+        <input type="text" id="primer2" placeholder="Enter Primer 2"><br>
+        <button type="button" onclick="runPrimerQC()">Check QC</button>
     </form>
-    <div class="results" id="results" style="display: none;">
-        <h3>QC Results:</h3>
-        <p id="heterodimerResult"></p>
-    </div>
+    <div id="primerQCResults"></div>
+
+    <!-- BLAST Form -->
+    <h2>Run BLAST</h2>
+    <form id="blastForm">
+        <label for="blastSequence">Enter Sequence:</label><br>
+        <textarea id="blastSequence" rows="5" cols="50" placeholder="Enter sequence"></textarea><br>
+        <label for="program">BLAST Program:</label>
+        <select id="program">
+            <option value="blastn">BLASTN</option>
+            <option value="blastp">BLASTP</option>
+        </select><br>
+        <label for="database">Database:</label>
+        <select id="database">
+            <option value="nt">Nucleotide (nt)</option>
+            <option value="nr">Protein (nr)</option>
+        </select><br>
+        <button type="button" onclick="runBlast()">Run BLAST</button>
+    </form>
+    <div id="blastResults"></div>
 
     <script>
-        function getReverseComplement(sequence) {
-            // Calculate reverse complement of the primer
-            const complementMap = { A: 'T', T: 'A', G: 'C', C: 'G' };
-            return sequence
-                .toUpperCase()
-                .split('')
-                .reverse()
-                .map(base => complementMap[base] || base)
-                .join('');
-        }
-
-        function checkHeterodimer(primer1, primer2) {
-            // Check for complementary sequences between Primer1 and reverse complement of Primer2
-            const revCompPrimer2 = getReverseComplement(primer2);
-
-            for (let i = 0; i < primer1.length; i++) {
-                for (let j = 0; j < revCompPrimer2.length; j++) {
-                    // Match sequences of 4 or more bases
-                    if (primer1.slice(i, i + 4) === revCompPrimer2.slice(j, j + 4)) {
-                        return true; // Potential heterodimer
-                    }
-                }
-            }
-            return false;
-        }
-
-        function analyzePrimers() {
-            const primer1 = document.getElementById("primer1").value.toUpperCase().trim();
-            const primer2 = document.getElementById("primer2").value.toUpperCase().trim();
-            const resultsDiv = document.getElementById("results");
-            const heterodimerResult = document.getElementById("heterodimerResult");
+        async function runPrimerQC() {
+            const primer1 = document.getElementById("primer1").value.trim();
+            const primer2 = document.getElementById("primer2").value.trim();
+            const resultsDiv = document.getElementById("primerQCResults");
 
             if (!primer1 || !primer2) {
-                alert("Please enter valid sequences for both primers.");
+                alert("Both primers are required.");
                 return;
             }
 
-            // Check for heterodimer formation
-            const hasHeterodimer = checkHeterodimer(primer1, primer2);
+            const response = await fetch("http://127.0.0.1:5000/primer_qc", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ primer1, primer2 }),
+            });
 
-            if (hasHeterodimer) {
-                heterodimerResult.textContent = "Warning: Primers can form a heterodimer!";
+            const data = await response.json();
+            if (response.ok) {
+                resultsDiv.innerHTML = `
+                    <p>Primer 1 Length: ${data.primer1_length}</p>
+                    <p>Primer 2 Length: ${data.primer2_length}</p>
+                    <p>Heterodimer: ${data.heterodimer ? "Yes" : "No"}</p>
+                `;
             } else {
-                heterodimerResult.textContent = "Good news: No significant heterodimer formation detected.";
+                resultsDiv.innerHTML = `<p>Error: ${data.error}</p>`;
+            }
+        }
+
+        async function runBlast() {
+            const sequence = document.getElementById("blastSequence").value.trim();
+            const program = document.getElementById("program").value;
+            const database = document.getElementById("database").value;
+            const resultsDiv = document.getElementById("blastResults");
+
+            if (!sequence) {
+                alert("Please enter a sequence.");
+                return;
             }
 
-            resultsDiv.style.display = "block";
+            resultsDiv.textContent = "Running BLAST... Please wait.";
+
+            const response = await fetch("http://127.0.0.1:5000/run_blast", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ sequence, program, database }),
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                resultsDiv.textContent = JSON.stringify(data.results, null, 2);
+            } else {
+                resultsDiv.textContent = `Error: ${data.error}`;
+            }
         }
     </script>
 </body>
