@@ -3,10 +3,122 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My GitHub Website</title>
+    <title>Primer QC Website</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 20px;
+            max-width: 600px;
+            margin: auto;
+            background-color: #f4f4f4;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        label {
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .results {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .results p {
+            margin: 5px 0;
+            font-size: 16px;
+        }
+    </style>
 </head>
 <body>
-    <h1>Welcome to My GitHub Website!</h1>
-    <p>This is hosted on GitHub Pages.</p>
+    <h1>Primer QC Tool</h1>
+    <form id="primerForm">
+        <label for="primer">Enter Primer Sequence:</label>
+        <input type="text" id="primer" name="primer" placeholder="e.g., ATGCAGCTTAGC" required>
+        <button type="button" onclick="analyzePrimer()">Analyze Primer</button>
+    </form>
+    <div class="results" id="results" style="display: none;">
+        <h3>QC Results:</h3>
+        <p id="lengthResult"></p>
+        <p id="gcContentResult"></p>
+        <p id="tmResult"></p>
+        <p id="warningResult"></p>
+    </div>
+
+    <script>
+        function analyzePrimer() {
+            const primer = document.getElementById("primer").value.toUpperCase().trim();
+            const resultsDiv = document.getElementById("results");
+            const lengthResult = document.getElementById("lengthResult");
+            const gcContentResult = document.getElementById("gcContentResult");
+            const tmResult = document.getElementById("tmResult");
+            const warningResult = document.getElementById("warningResult");
+
+            if (!primer) {
+                alert("Please enter a valid primer sequence.");
+                return;
+            }
+
+            // Calculate primer length
+            const length = primer.length;
+
+            // Calculate GC content
+            const gcCount = (primer.match(/G/g) || []).length + (primer.match(/C/g) || []).length;
+            const gcContent = ((gcCount / length) * 100).toFixed(2);
+
+            // Calculate melting temperature (Tm) for short primers
+            const atCount = (primer.match(/A/g) || []).length + (primer.match(/T/g) || []).length;
+            const tm = (2 * atCount) + (4 * gcCount);
+
+            // Warnings for common issues
+            let warnings = [];
+            if (gcContent < 40 || gcContent > 60) {
+                warnings.push("GC content is outside the ideal range (40-60%).");
+            }
+            if (length < 18 || length > 25) {
+                warnings.push("Primer length is outside the ideal range (18-25 bases).");
+            }
+            if (primer.match(/[^ATGC]/)) {
+                warnings.push("Primer contains invalid characters (only A, T, G, C are allowed).");
+            }
+
+            // Display results
+            lengthResult.textContent = `Primer Length: ${length} bases`;
+            gcContentResult.textContent = `GC Content: ${gcContent}%`;
+            tmResult.textContent = `Melting Temperature (Tm): ${tm}°C`;
+            warningResult.textContent = warnings.length > 0 ? `Warnings: ${warnings.join(" ")}` : "No warnings. Primer looks good!";
+
+            resultsDiv.style.display = "block";
+        }
+    </script>
 </body>
 </html>
